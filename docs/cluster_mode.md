@@ -171,7 +171,7 @@ mold_worker 1000, 2000, 4000
 - After the last threshold, molds are only replaced by `SIGURG` or `pumactl refork`, which promote the busiest worker at any time.
 - A phased restart (`SIGUSR1` or `pumactl phased-restart`) retires the mold and forks workers from the master, so new code is loaded, then starts the thresholds again. As with any phased restart, this requires `preload_app!` to be disabled.
 - `mold_worker` cannot be combined with `fork_worker`.
-- On Linux 3.4+, workers are reparented to the master rather than orphaned if their mold exits.
+- On Linux 3.4+, workers are reparented to the master rather than orphaned if their mold exits. Puma does this by making the master a child subreaper (`PR_SET_CHILD_SUBREAPER`), which applies to all of its descendants: a process that your app daemonizes is also reparented to the master, and when it exits the master reaps it and logs `! reaped unknown child process`.
 - `mold_worker` introduces new `after_mold_promotion` and `before_mold_shutdown` configuration hooks.
     - `after_mold_promotion` runs in the mold after it stops serving requests, before it forks any workers. Use it for what you would do in `before_refork`, such as closing connections or running garbage collection.
     - `before_mold_shutdown` runs in the mold before it exits.
