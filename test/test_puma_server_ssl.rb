@@ -121,6 +121,21 @@ class TestPumaServerSSL < PumaTest
     assert_equal "https\na=1&b=2", body
   end
 
+  def test_pipelined_request_after_body
+    start_server
+    @server.app = proc { |env| [200, {}, [env['rack.input'].read]] }
+
+    # Send the body after the 100 Continue so it is read by Client#read_body
+    socket = send_http "POST / HTTP/1.1\r\nHost: test.com\r\nContent-Length: 7\r\nExpect: 100-continue\r\n\r\n", ctx: new_ctx
+    assert_equal "HTTP/1.1 100 Continue", socket.read_response.status
+    socket << "a=1&b=2GET / HTTP/1.1\r\nHost: test.com\r\nConnection: close\r\n\r\n"
+
+    assert_equal(
+      "HTTP/1.1 200 OK\r\ncontent-length: 7\r\n\r\na=1&b=2" \
+      "HTTP/1.1 200 OK\r\nconnection: close\r\ncontent-length: 0\r\n\r\n", socket.read_all
+    )
+  end
+
   def rejection(server_ctx, min_max)
     if server_ctx
       start_server(&server_ctx)

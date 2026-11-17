@@ -652,12 +652,16 @@ module Puma
         end
 
         @bytes_read += chunk.bytesize
+        if chunk.bytesize > remain
+          extra = chunk.byteslice(remain..-1)
+          chunk = chunk.byteslice(0, remain)
+        end
         remain -= @body.write(chunk)
       end
 
       if remain <= 0
         @body.rewind
-        @buffer = nil
+        @buffer = extra
         set_ready
         true
       else
